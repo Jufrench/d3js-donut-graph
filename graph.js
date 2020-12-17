@@ -29,18 +29,26 @@ const update = data => {
         .data(pie(data));
 
     // Handle the exit selection
-    paths.exit().remove();
+    paths.exit()
+        .transition().duration(750)
+        .attrTween('d', arcTweenExit)
+        .remove();
 
     // Handle the current DOM path updates
-    paths.attr('d', arcPath);
+    paths.attr('d', arcPath)
+        .transition().duration(750)
+        // .attrTween('d', arcTweenUpdate);
 
     paths.enter()
         .append('path')
             .attr('class', 'arc')
-            .attr('d', arcPath)
+            // .attr('d', arcPath)
             .attr('stroke', '#fff')
             .attr('stroke-width', 3)
-            .attr('fill', d => color(d.data.name));
+            .attr('fill', d => color(d.data.name))
+            // .each(function(d) { this._current = d })
+            .transition().duration(750)
+                .attrTween('d', arcTweenEnter);
 };
 
 // Data array and firestore
@@ -70,3 +78,36 @@ db.collection('expenses').onSnapshot(res => {
 
 });
 
+// Handle tween animation for entering new item/document
+const arcTweenEnter = d => {
+    let i = d3.interpolate(d.endAngle, d.startAngle)
+
+    return function(t) {
+        d.startAngle = i(t);
+        return arcPath(d);
+    }
+};
+
+// Handle tween animation for removing new item/document
+const arcTweenExit = d => {
+    let i = d3.interpolate(d.startAngle, d.endAngle)
+
+    return function(t) {
+        d.startAngle = i(t);
+        return arcPath(d);
+    }
+};
+
+
+// Use function keyword to allow use of 'this'
+// function arcTweenUpdate(d) {
+//     // Interpolate between the two objects
+//     let i = d3.interpolate(this._current. d)
+
+//     // Update the current prop w/ new updated data
+//     this._current = i(1);
+
+//     return function(t) {
+//         return arcPath(i(t));
+//     }
+// }
