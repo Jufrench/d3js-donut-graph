@@ -42,7 +42,7 @@ const tip = d3
     .style('position', 'absolute') // Absolutely position the tooltip to the body. Later we'll use transform to adjust the position of the tooltip
     .style('left', 0)
     .style('top', 0)
-    .style('visibility', 'visible');
+    .style('visibility', 'hidden');
 
     // graph.call(tip);
 
