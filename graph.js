@@ -182,7 +182,7 @@ function arcTweenUpdate(d) {
 //             .attr('fill', '#fff');
 // }
 const handleMouseOver = (e, d) => {
-    d3.select(e.currentTarget).transition().duration(300).attr("fill", "#fff");
+    d3.select(e.currentTarget).transition('changeSlideFill').duration(300).attr("fill", "#fff");
 }
 
 // function handleMouseOut(e, d) {
@@ -191,7 +191,7 @@ const handleMouseOver = (e, d) => {
 //             .attr('fill', color(d.data.name));
 // }
 const handleMouseOut = (e, d) => {
-    d3.select(e.currentTarget).transition().duration(300).attr("fill", color(d.data.name));
+    d3.select(e.currentTarget).transition('changeSlideFill').duration(300).attr("fill", color(d.data.name));
 }
 
 // function handleClick(e, d) {
