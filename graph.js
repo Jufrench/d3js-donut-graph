@@ -19,10 +19,42 @@ const arcPath = d3.arc()
 
 const color = d3.scaleOrdinal(d3['schemeSet3']);
 
+// Legend Group
+const legendGroup = svg.append('g')
+    .attr('transform', `translate(${dims.width + 40}, 10)`);
+
+const legend = d3.legendColor()
+    .shape('circle')
+    .shapePadding(10)
+    .scale(color);
+
+// const tip = d3.tip()
+//     .attr('class', 'tip card')
+//     .html(d => {
+//         return `<p>Yooo!</p>`
+//     });
+
+const tip = d3
+    .select('body')
+    .append('div')
+    .attr('class', 'card tip')
+    .style('padding', '8px') // Add some padding so the tooltip content doesn't touch the border of the tooltip
+    .style('position', 'absolute') // Absolutely position the tooltip to the body. Later we'll use transform to adjust the position of the tooltip
+    .style('left', 0)
+    .style('top', 0)
+    .style('visibility', 'visible');
+
+    // graph.call(tip);
+
 // Update function
 const update = data => {
+
     // Update color scale domain
     color.domain(data.map(d => d.name));
+
+    // Update and call legend
+    legendGroup.call(legend)
+    legendGroup.selectAll('text').attr('fill', 'white');
 
     // Join enhanced (pie) data to path elements
     const paths = graph.selectAll('path')
@@ -35,27 +67,50 @@ const update = data => {
         .remove();
 
     // Handle the current DOM path updates
-    paths.attr('d', arcPath)
-        .transition().duration(750)
+    paths.transition().duration(750)
         .attrTween('d', arcTweenUpdate);
 
     paths.enter()
         .append('path')
             .attr('class', 'arc')
-            // .attr('d', arcPath)
             .attr('stroke', '#fff')
             .attr('stroke-width', 3)
+            .attr('d', arcPath)
             .attr('fill', d => color(d.data.name))
             .each(function(d) { this._current = d })
-            .transition().duration(750)
-                .attrTween('d', arcTweenEnter);
+            .transition().duration(750).attrTween('d', arcTweenEnter);
+
+    // Add events
+    // graph.selectAll('path')
+    //     .on('mouseover', handleMouseOver)
+    //     .on('mouseout', handleMouseOut)
+    //     .on('click', handleClick);
+
+    graph.selectAll("path")
+        .on("mouseover", (event, d) => {
+            let content = `<div class="name">${d.data.name}</div>`;
+            content += `<div class="cost">$${d.data.cost}</div>`;
+            content += `<div class="delete">Click slice to delete</div>`;
+            tip.html(content).style("visibility", "visible");
+            handleMouseOver(event, d);
+        })
+        .on("mouseout", (event, d) => {
+            tip.style("visibility", "hidden");
+            handleMouseOut(event, d);
+        })
+        .on("mousemove", (event, d) => {
+            tip.style("transform", `translate(${event.pageX}px,${event.pageY}px)`); // We can calculate the mouse's position relative the whole page by using event.pageX and event.pageY.
+        })
+        .on("click", handleClick);
 };
 
 // Data array and firestore
 var data = [];
-db.collection('expenses').onSnapshot(res => {
+
+db.collection('expenses').orderBy('cost').onSnapshot(res => {
 
     res.docChanges().forEach(change => {
+
         const doc = {...change.doc.data(), id: change.doc.id };
 
         switch (change.type) {
@@ -80,12 +135,12 @@ db.collection('expenses').onSnapshot(res => {
 
 // Handle tween animation for entering new item/document
 const arcTweenEnter = d => {
-    let i = d3.interpolate(d.endAngle, d.startAngle)
+    let i = d3.interpolate(d.endAngle - 0.1, d.startAngle)
 
     return function(t) {
         d.startAngle = i(t);
         return arcPath(d);
-    }
+    };
 };
 
 // Handle tween animation for removing new item/document
@@ -95,19 +150,55 @@ const arcTweenExit = d => {
     return function(t) {
         d.startAngle = i(t);
         return arcPath(d);
-    }
+    };
 };
 
 
 // Use function keyword to allow use of 'this'
 function arcTweenUpdate(d) {
+    console.log(this._current, d);
     // Interpolate between the two objects
-    // let i = d3.interpolate(this._current. d)
+    let i = d3.interpolate(this._current, d);
 
     // // Update the current prop w/ new updated data
-    // this._current = i(1);
+    this._current = i(1);
 
-    // return function(t) {
-    //     return arcPath(i(t));
-    // }
+    return function(t) {
+        // i(t) returns a value of d (data object) which we pass to arcPath
+        return arcPath(i(t));
+    };
+}
+
+// Event handlers
+/**
+ * We'll name the transitions by passing in a string name into transition()
+ * This is so that transitions don't interfere with each other
+ * If not, if you hover over pie slice during page load, pie slice doesn't fill completely.
+ */
+
+// function handleMouseOver(e, d) {
+//     d3.select(this)
+//         .transition('changeSlideFill').duration(300)
+//             .attr('fill', '#fff');
+// }
+const handleMouseOver = (e, d) => {
+    d3.select(e.currentTarget).transition().duration(300).attr("fill", "#fff");
+}
+
+// function handleMouseOut(e, d) {
+//     d3.select(this)
+//         .transition('changeSlideFill').duration(300)
+//             .attr('fill', color(d.data.name));
+// }
+const handleMouseOut = (e, d) => {
+    d3.select(e.currentTarget).transition().duration(300).attr("fill", color(d.data.name));
+}
+
+// function handleClick(e, d) {
+//     const id = d.data.id;
+//     db.collection('expenses').doc(id).delete();
+// }
+const handleClick = (e, d) => {
+    const id = d.data.id;
+    db.collection('expenses').doc(id).delete();
 }
